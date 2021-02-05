@@ -104,6 +104,18 @@ def dl_bug(bug):
             print()
 
 
+def unpack_bug(bug):
+    if bug["archive"].is_file():
+        if any('gz' in s for s in bug["archive"].suffixes):
+            subprocess.check_call(f'tar zxf {bug["archive"]} -C {bug["root"]}'.split())
+        elif bug["archive"].name == 'download':
+            subprocess.check_call(f'tar jxf {bug["archive"]} -C {bug["root"]}'.split())
+        else:
+            raise Exception(f"Couldn't handle file {bug['archive']}")
+    else:
+        print('File', bug["archive"], 'is not downloaded')
+
+
 if __name__ == '__main__':
     bug_readmes = list(p for p in Path('programs/apps').glob('**/README') if bug_id_regex.match(p.parent.name))
     bugs = []
@@ -120,12 +132,14 @@ if __name__ == '__main__':
     with open('manifest.json', 'w') as f:
         json.dump(bugs, f, indent=4, sort_keys=True)
     
+    succeeded_bugs = []
     errored_bugs = []
     for b in bugs:
         try:
             print_bug(b)
             setup_bug(repos, b)
             dl_bug(b)
+            succeeded_bugs.append(b)
         except Exception as e:
             print(e)
             errored_bugs.append((b, e))
@@ -133,3 +147,13 @@ if __name__ == '__main__':
     print('Could not download:')
     for b, e in errored_bugs:
         print(b["program"], b["id"], b["downloadfrom"], e)
+    errored_bugs = []
+    for b in succeeded_bugs:
+        try:
+            unpack_bug(b)
+        except Exception as e:
+            print(e)
+            errored_bugs.append((b, e))
+    print('Could not unpack:')
+    for b, e in errored_bugs:
+        print(b["program"], b["id"], b["archive"], e)
