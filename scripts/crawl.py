@@ -100,7 +100,7 @@ def dl_bug(bug):
     else:
         bug["archive"] = bug["root"] / bug["downloadfrom"].split('/')[-1]
         if bug["archive"].is_file():
-            print('Already downloaded')
+            print(str(bug["archive"]), 'is already downloaded')
         else:
             wget.download(bug["downloadfrom"], out=str(bug["archive"]))
             print()
@@ -134,31 +134,38 @@ if __name__ == '__main__':
     with open('manifest.json', 'w') as f:
         json.dump(bugs, f, indent=4, sort_keys=True)
     
-    succeeded_bugs = []
+    downloaded_bugs = []
     errored_bugs = []
     for b in bugs:
         try:
-            print_bug(b)
             setup_bug(repos, b)
             dl_bug(b)
-            succeeded_bugs.append(b)
+            downloaded_bugs.append(b)
         except Exception as e:
             print(e)
             errored_bugs.append((b, e))
-    print('Could not download:')
-    for b, e in errored_bugs:
-        print(b["program"], b["id"], b["downloadfrom"], e)
-        shutil.rmtree(b["root"])
-        if not any(b["root"].parent.iterdir()):
-            shutil.rmtree(b["root"].parent)
+    if any(errored_bugs):
+        print('Error downloading:')
+        for b, e in errored_bugs:
+            print(b["program"], b["id"], e)
+            shutil.rmtree(b["root"])
+            if not any(b["root"].parent.iterdir()):
+                shutil.rmtree(b["root"].parent)
     
+    print(len(downloaded_bugs), 'downloaded')
+
+    unpacked_bugs = []
     errored_bugs = []
-    for b in succeeded_bugs:
+    for b in downloaded_bugs:
         try:
             unpack_bug(b)
+            unpacked_bugs.append(b)
         except Exception as e:
             print(e)
             errored_bugs.append((b, e))
-    print('Could not unpack:')
-    for b, e in errored_bugs:
-        print(b["program"], b["id"], b["archive"], e)
+    if any(errored_bugs):
+        print('Error unpacking:')
+        for b, e in errored_bugs:
+            print(b["program"], b["id"], b["archive"], e)
+    
+    print(len(unpacked_bugs), 'succeeded')
