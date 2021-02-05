@@ -3,6 +3,8 @@ import re
 import json
 import validators
 import wget
+import subprocess
+import shutil
 
 bug_id_regex = re.compile(r'(CVE|CA|BID)-[0-9-+]*')
 id_regex = re.compile(rf'-= ({bug_id_regex.pattern}) =-')
@@ -143,10 +145,13 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
             errored_bugs.append((b, e))
-
     print('Could not download:')
     for b, e in errored_bugs:
         print(b["program"], b["id"], b["downloadfrom"], e)
+        shutil.rmtree(b["root"])
+        if not any(b["root"].parent.iterdir()):
+            shutil.rmtree(b["root"].parent)
+    
     errored_bugs = []
     for b in succeeded_bugs:
         try:
